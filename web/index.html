@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Toxic Music Discovery</title>
+  <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Toxic Music Discovery</h1>
+      <p class="sub">Digite um artista. O programa acha as músicas mais conhecidas e o link do YouTube de cada uma. No fim, você copia os links ou baixa o TXT e cola no Media Downloader.</p>
+    </header>
+
+    <section class="status" aria-label="Situação do programa">
+      <span class="chip" id="chip-chave">YouTube: ...</span>
+      <span class="chip" id="chip-cota">Pesquisas de hoje: ...</span>
+      <span class="chip" id="chip-biblioteca">Biblioteca: ...</span>
+      <button type="button" class="leve" id="btn-testar">Testar conexões</button>
+    </section>
+    <p id="teste" class="aviso" hidden></p>
+
+    <form id="form" class="busca">
+      <label for="artista">Artista ou banda</label>
+      <div class="linha">
+        <input id="artista" name="artista" type="text" autocomplete="off" placeholder="Ex.: Linkin Park" maxlength="100" required>
+        <label for="limite" class="so-leitor">Quantas músicas</label>
+        <input id="limite" name="limite" type="number" min="1" max="100" value="50" title="Quantas músicas">
+        <button type="submit" id="btn-pesquisar" class="principal">Pesquisar</button>
+        <button type="button" id="btn-parar" class="leve" hidden>Parar</button>
+      </div>
+    </form>
+
+    <div id="progresso" hidden>
+      <div class="barra"><div id="barra-preench"></div></div>
+      <p id="progresso-texto" aria-live="polite"></p>
+    </div>
+    <p id="mensagem" class="aviso" hidden role="status"></p>
+
+    <section id="historico-area" hidden>
+      <h2>Já pesquisados <small>(abrir não gasta pesquisas)</small></h2>
+      <div id="historico" class="chips"></div>
+    </section>
+
+    <section id="resultado" hidden>
+      <div class="topo-resultado">
+        <h2 id="res-titulo"></h2>
+        <p id="res-resumo"></p>
+        <div class="acoes">
+          <button type="button" class="principal" id="btn-copiar">Copiar todos os links</button>
+          <a class="botao" id="btn-baixar" href="#">Baixar TXT</a>
+          <label class="ordem">Ordem:
+            <select id="ordem">
+              <option value="popularidade">Mais conhecidas primeiro</option>
+              <option value="album">Agrupar por álbum</option>
+            </select>
+          </label>
+        </div>
+        <p id="copiado" class="ok" hidden role="status"></p>
+      </div>
+      <div id="listas"></div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

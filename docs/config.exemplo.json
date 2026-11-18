@@ -1,0 +1,8 @@
+{
+  "limiteMusicas": 50,
+  "limiteUnidadesPorDia": 9600,
+  "validadeListaDias": 14,
+  "incluirAoVivo": false,
+  "usarBiblioteca": true,
+  "porta": 8765
+}

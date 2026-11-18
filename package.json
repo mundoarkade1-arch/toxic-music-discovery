@@ -1,0 +1,12 @@
+{
+  "name": "toxic-music-discovery",
+  "version": "0.1.0",
+  "description": "Acha as músicas mais conhecidas de um artista, pega o link do YouTube de cada uma e entrega a lista pronta para colar no Media Downloader.",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/cli.js servir",
+    "test": "node --test"
+  }
+}
