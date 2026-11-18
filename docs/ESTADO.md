@@ -1,28 +1,36 @@
 # Estado do projeto — Toxic Music Discovery
-Legenda: [T] testado em teste automático com Deezer/YouTube/Google SIMULADOS · [R] testado de verdade na internet · [?] ainda não comprovado
+Atualizado: 2026-11-18. Legenda: [T] testado em teste automático com Deezer/YouTube/Google SIMULADOS · [R] testado de verdade, no PC do usuário · [?] ainda não comprovado
 
 ## Verificação (leia primeiro)
-- 107 testes automáticos passam (Node 22). Nenhum usa a internet.
-- Interface conferida num navegador de verdade (Chromium), com dados simulados: pesquisar, aprovar, copiar, baixar TXT, agrupar por álbum, celular.
+- 107 testes automáticos passam (Node 22 no desenvolvimento e Node 20 no GitHub Actions, verde em 2026-11-18). Nenhum usa a internet.
+- Interface conferida num navegador de verdade (Chromium) com dados simulados.
 - Os testes de economia (cache, cota) foram verificados quebrando o código de propósito: os testes falham quando deveriam.
-- **NENHUMA ligação com Deezer, YouTube ou Google foi testada de verdade.** O ambiente de desenvolvimento não tinha acesso a esses sites. Por isso existe `2-testar-conexao.bat` (e o botão "Testar conexões").
+
+## Testado de verdade no PC do usuário em 2026-11-18 [R]
+- Deezer: achar o artista e as músicas mais conhecidas.
+- YouTube: a chave de API é aceita (teste de conexão) e a pesquisa por música funciona. Linkin Park, 50 músicas, 49 links confirmados, 0 para conferir. O usuário abriu 3 links (começo, meio e fim) e os 3 estavam certos.
+- Copiar os links e colar no Media Downloader: todas as músicas apareceram na fila.
+- Google Drive (só leitura): login pelo cliente Desktop e leitura de 999 músicas.
+- Comparação com a biblioteca: das 10 primeiras da Linkin Park, 9 foram reconhecidas como já existentes no Drive (o usuário confirmou que eram dele) e não foram pesquisadas. Pesquisas gastas nessa etapa: 0.
 
 ## Funciona [T]
-- Achar artista e músicas populares no Deezer; tirar ao vivo/remix/karaokê e repetidas.
-- Pesquisar no YouTube (5 resultados), conferir título + artista/canal + duração, pontuar. Cover, remix, coletânea e vídeo de outro artista não passam.
-- Cache em disco; cota diária (101 por música); parar e continuar no dia seguinte.
-- Comparar com `dados/biblioteca.json` (por nome e pelo código do YouTube no nome do arquivo).
-- Interface local, resultados separados (encontradas / conferir / sem resultado / pendentes / biblioteca / descartadas), copiar, TXT, histórico.
+- Limpar a lista (sem ao vivo/remix/karaokê e sem repetidas), pontuar e conferir o vídeo (título, artista/canal e duração).
+- Cache em disco, cota diária (101 por música), parar e continuar no dia seguinte.
+- Interface local com resultados separados, copiar, TXT, histórico, aprovar ou descartar na mão.
 - Proteções do servidor local (só 127.0.0.1, recusa outros sites).
 
 ## Não comprovado [?]
-- Deezer real: formato de `/search/artist` e `/artist/{id}/top?limit=100` (baseado na documentação pública).
-- YouTube real: `search.list` e `videos.list` e as mensagens de erro de cota/chave.
-- Google Drive real (herdado do Toxic Music Engine: só testado com mock).
-- Se a pontuação de conferência acerta bem com artistas brasileiros/títulos em português: precisa de uso real. Ajustes em `src/match.js`.
+- Artistas brasileiros e títulos em português. A pontuação de `src/match.js` pode precisar de ajuste.
+- A 50ª música da Linkin Park não entrou nos 49 links e não foi examinada.
+- Comparação com a biblioteca quando os nomes dos arquivos no Drive são bem diferentes do título original.
+
+## Atenção
+- A chave de API foi criada no projeto Google Cloud "Toxic Player", o mesmo do Gerenciador de Músicas. A cota de 10.000 pontos por dia é compartilhada, e o contador do Discovery não enxerga o que o site gastou.
+- Com a tela de consentimento do Google em modo "Teste", o acesso ao Drive costuma expirar em cerca de 7 dias. Quando isso acontecer, rodar `3-entrar-google.bat` de novo.
+- A chave do YouTube e o login do Google ficam só no PC, na pasta `dados` (fora do GitHub).
 
 ## Não feito de propósito (fora do escopo)
-Player, download, recomendações, reconferir/repesquisar uma música sozinha, outras fontes além do Deezer.
+Player, download, recomendações, repesquisar uma música sozinha, outras fontes além do Deezer.
 
 ## Reaproveitado do Toxic Music Engine
 `normalize.js`, `store.js`, `library.js`, `drive.js`, `google-auth.js` (com acesso só de leitura) e seus testes. Não levado (não serve a este propósito): fila de tarefas, charts Top 200, playlists, envio ao Drive. O Engine continua intacto no repositório dele.
