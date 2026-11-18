@@ -1,0 +1,20 @@
+# Dados do usuário: NUNCA vão para o GitHub
+dados/
+saida/
+
+# Segredos
+*.key
+.env
+.env.*
+youtube-chave.txt
+google-cliente.json
+google-token.json
+client_secret*.json
+
+# Node e sistema
+node_modules/
+npm-debug.log*
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
