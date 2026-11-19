@@ -11,6 +11,8 @@ const contem = (texto, trecho) => !!trecho && ` ${texto} `.includes(` ${trecho} 
 const PENALIDADE_FORTE = /\b(cover|remix|karaoke|instrumental|nightcore|slowed|sped up|reaction|tutorial|lesson|tribute|mashup|compilation|full album|greatest hits|best of|bass boosted|8d|live|ao vivo|acoustic|reverb)\b/;
 const PENALIDADE_LEVE = /\b(lyrics?|letra|legendado|traducao|tradutor|sub espanol)\b/;
 const OFICIAL = /\b(official|oficial)\b/;
+const PARENTESES = /[([][^)\]]*[)\]]/g; // "(La Notte)", "[Remastered]"...
+const AO_VIVO = /\b(ao vivo|live)\b/g;
 
 /**
  * @param faixa { artista, titulo, duracao }  (duracao em segundos, pode ser 0)
@@ -18,6 +20,10 @@ const OFICIAL = /\b(official|oficial)\b/;
  */
 export function avaliar(faixa, cand) {
   const t = textoComparavel(faixa.titulo);
+  // O mesmo título sem o que vem entre parênteses. Ex.: "Desejo Imortal (It Must Have Been Love)" -> "desejo imortal".
+  // O YouTube quase nunca traz esse nome extra. Só vale se sobrar um nome com pelo menos 4 letras.
+  const tBase = textoComparavel(String(faixa.titulo ?? '').replace(PARENTESES, ' '));
+  const temBase = tBase.length >= 4 && tBase !== t;
   const a = textoComparavel(faixa.artista);
   const v = textoComparavel(cand.titulo);
   const c = textoComparavel(cand.canal);
@@ -27,12 +33,15 @@ export function avaliar(faixa, cand) {
   let tituloParcial = false;
   let artistaOk = false;
 
-  if (contem(v, t)) { pontos += 40; tituloExato = true; tituloParcial = true; motivos.push('o título confere'); }
+  if (contem(v, t) || (temBase && contem(v, tBase))) { pontos += 40; tituloExato = true; tituloParcial = true; motivos.push('o título confere'); }
   else {
-    const palavras = t.split(' ').filter(Boolean);
-    const noVideo = new Set(v.split(' '));
-    const achadas = palavras.filter((p) => noVideo.has(p)).length;
-    if (palavras.length && achadas / palavras.length >= 0.8) { pontos += 20; tituloParcial = true; motivos.push('o título confere em parte'); }
+    const parte = (tt) => {
+      const palavras = tt.split(' ').filter(Boolean);
+      const noVideo = new Set(v.split(' '));
+      return palavras.length ? palavras.filter((p) => noVideo.has(p)).length / palavras.length : 0;
+    };
+    const melhorParte = Math.max(parte(t), temBase ? parte(tBase) : 0);
+    if (melhorParte >= 0.8) { pontos += 20; tituloParcial = true; motivos.push('o título confere em parte'); }
     else motivos.push('o título não confere');
   }
 
@@ -44,15 +53,20 @@ export function avaliar(faixa, cand) {
   if (alvo && [alvo, alvo + 'topic', alvo + 'vevo', alvo + 'official', alvo + 'music'].includes(colado)) { pontos += 15; motivos.push('canal oficial do artista'); }
   if (OFICIAL.test(v)) pontos += 5;
 
+  let duracaoConfere = false;
   if (cand.duracao && faixa.duracao) {
     const dif = Math.abs(cand.duracao - faixa.duracao);
-    if (dif <= 8) { pontos += 20; motivos.push('a duração confere'); }
+    if (dif <= 8) { duracaoConfere = true; pontos += 20; motivos.push('a duração confere'); }
     else if (dif <= 20) { pontos += 10; motivos.push('a duração é parecida'); }
     else if (dif >= 60) { pontos -= 25; motivos.push('a duração é bem diferente'); }
   }
   if (cand.duracao > 720 && (faixa.duracao || 0) < 600) { pontos -= 40; motivos.push('vídeo muito longo (pode ser coletânea)'); }
 
-  if (PENALIDADE_FORTE.test(v) && !PENALIDADE_FORTE.test(t)) { pontos -= 30; motivos.push('parece cover, remix ou ao vivo'); }
+  // Na música sertaneja, quase tudo é gravado ao vivo e o Deezer nem sempre põe "(Ao Vivo)" no título.
+  // Se a duração é a mesma da música (diferença de até 8 segundos), "ao vivo" no vídeo não tira pontos.
+  const paraPenalidade = duracaoConfere ? v.replace(AO_VIVO, ' ') : v;
+  if (PENALIDADE_FORTE.test(paraPenalidade) && !PENALIDADE_FORTE.test(t)) { pontos -= 30; motivos.push('parece cover, remix ou ao vivo'); }
+  else if (duracaoConfere && paraPenalidade !== v && !PENALIDADE_FORTE.test(t)) motivos.push('é ao vivo, mas a duração é a mesma da música');
   if (PENALIDADE_LEVE.test(v) && !PENALIDADE_LEVE.test(t)) { pontos -= 10; motivos.push('parece vídeo de letra'); }
 
   return { pontos, tituloExato, tituloParcial, artistaOk, motivos };
