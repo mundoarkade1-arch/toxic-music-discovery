@@ -13,6 +13,7 @@ const PENALIDADE_LEVE = /\b(lyrics?|letra|legendado|traducao|tradutor|sub espano
 const OFICIAL = /\b(official|oficial)\b/;
 const PARENTESES = /[([][^)\]]*[)\]]/g; // "(La Notte)", "[Remastered]"...
 const AO_VIVO = /\b(ao vivo|live)\b/g;
+const PREFIXO_ARTISTA = /^(mc|dj) /; // "MC Ryan SP" aparece nos vídeos só como "Ryan SP"
 
 /**
  * @param faixa { artista, titulo, duracao }  (duracao em segundos, pode ser 0)
@@ -25,6 +26,9 @@ export function avaliar(faixa, cand) {
   const tBase = textoComparavel(String(faixa.titulo ?? '').replace(PARENTESES, ' '));
   const temBase = tBase.length >= 4 && tBase !== t;
   const a = textoComparavel(faixa.artista);
+  const aBase = a.replace(PREFIXO_ARTISTA, '').trim();
+  const temABase = aBase.length >= 4 && aBase !== a;
+  const artistaAparece = (texto) => contem(texto, a) || (temABase && contem(texto, aBase));
   const v = textoComparavel(cand.titulo);
   const c = textoComparavel(cand.canal);
   const motivos = [];
@@ -45,7 +49,7 @@ export function avaliar(faixa, cand) {
     else motivos.push('o título não confere');
   }
 
-  if (contem(v, a) || contem(c, a)) { pontos += 25; artistaOk = true; motivos.push('o artista aparece no título ou no canal'); }
+  if (artistaAparece(v) || artistaAparece(c)) { pontos += 25; artistaOk = true; motivos.push('o artista aparece no título ou no canal'); }
   else motivos.push('o artista não aparece');
 
   const colado = c.replace(/ /g, '');
