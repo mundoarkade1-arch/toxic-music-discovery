@@ -35,6 +35,9 @@ function aviso(texto, tipo = '') {
 function chip(id, texto, tipo) { const e = $(id); e.textContent = texto; e.className = 'chip ' + tipo; }
 
 const seguro = (url) => (typeof url === 'string' && url.startsWith(PREFIXO_YOUTUBE) ? url : '#');
+const seguroDeezer = (url) => (typeof url === 'string' && /^https:\/\/(www\.)?deezer\.com\//.test(url) ? url : '#');
+const seguroImagem = (url) => (typeof url === 'string' && /^https:\/\//.test(url) ? url : '');
+const nomeDaFaixa = (it) => (it.artista ? `${it.artista} — ${it.titulo}` : it.titulo);
 const dataBonita = (iso) => { try { return new Date(iso).toLocaleString('pt-BR'); } catch { return ''; } };
 const minseg = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
 
@@ -57,8 +60,10 @@ function desenharHistorico(lista) {
 
 // ---------- pesquisa ----------
 function mostrarJob(job) {
+  document.body.dataset.rodando = job.rodando ? '1' : '';
   $('#progresso').hidden = !job.rodando;
   $('#btn-pesquisar').disabled = job.rodando;
+  $('#btn-continuar').disabled = job.rodando;
   $('#btn-parar').hidden = !job.rodando;
   if (!job.rodando) return;
   const pct = job.total ? Math.round((job.feitas / job.total) * 100) : 0;
@@ -149,7 +154,7 @@ function linhaEncontrada(it) {
   return h('li', { class: 'musica' },
     h('span', { class: 'num' }, it.ordem),
     h('div', {},
-      h('div', { class: 'titulo' }, it.titulo),
+      h('div', { class: 'titulo' }, nomeDaFaixa(it)),
       h('div', { class: 'sec' }, `${it.video.canal}${it.manual ? ' · aprovada por você' : ''}`),
       h('a', { class: 'link', href: seguro(it.video.url), target: '_blank', rel: 'noopener noreferrer' }, it.video.url)),
     h('div', { class: 'botoes' }, h('button', { type: 'button', class: 'pequeno', onclick: () => decidir(it.chave, 'descartar') }, 'Descartar')));
@@ -165,7 +170,7 @@ function linhaConferir(it) {
     h('div', { class: 'motivos' }, c.motivos.join(' · '))));
   return h('li', { class: 'musica' },
     h('span', { class: 'num' }, it.ordem),
-    h('div', {}, h('div', { class: 'titulo' }, it.titulo), it.aviso ? h('div', { class: 'sec' }, it.aviso) : null),
+    h('div', {}, h('div', { class: 'titulo' }, nomeDaFaixa(it)), it.aviso ? h('div', { class: 'sec' }, it.aviso) : null),
     h('div', { class: 'botoes' }, h('button', { type: 'button', class: 'pequeno', onclick: () => decidir(it.chave, 'descartar') }, 'Descartar')),
     h('div', { class: 'candidatos' }, cands));
 }
@@ -173,7 +178,7 @@ function linhaConferir(it) {
 function linhaSimples(it, extra) {
   return h('li', { class: 'musica' },
     h('span', { class: 'num' }, it.ordem),
-    h('div', {}, h('div', { class: 'titulo' }, it.titulo), h('div', { class: 'sec' }, it.album || '')),
+    h('div', {}, h('div', { class: 'titulo' }, nomeDaFaixa(it)), h('div', { class: 'sec' }, [it.album, it.ano].filter(Boolean).join(' · '))),
     h('div', { class: 'botoes' }, extra || null));
 }
 
@@ -199,17 +204,106 @@ function desenharResultado() {
   baixar.setAttribute('aria-disabled', String(!r.urls.length));
   baixar.textContent = `Baixar ${r.artista.slug}.txt`;
   $('#copiado').hidden = true;
+  const continuar = $('#btn-continuar');
+  const faltam = r.totais.pendente;
+  continuar.hidden = !faltam;
+  continuar.textContent = `Pesquisar links no YouTube (${faltam} música${faltam === 1 ? '' : 's'})`;
+  continuar.disabled = !!document.body.dataset.rodando;
 
   const blocos = [
     bloco('Encontradas', 'O título, o artista e a duração conferem. Estes links entram no TXT.', por('encontrada'), linhaEncontrada),
     bloco('Precisam de conferência', 'Achei vídeos parecidos, mas não tenho certeza. Abra o link, veja se é a música certa e clique em "Usar este". Só os confirmados entram no TXT.', por('conferir'), linhaConferir),
-    bloco('Sem resultado', 'Nenhum vídeo parecido foi achado.', por('sem_resultado'), (it) => linhaSimples(it)),
-    bloco('Ainda não pesquisadas', 'Faltou pesquisa (acabou a cota do dia ou você parou). Pesquise o artista de novo para continuar.', por('pendente'), (it) => linhaSimples(it)),
+    bloco('Sem resultado', 'Nenhum vídeo parecido foi achado. Se aparecer algum vídeo embaixo da música, abra o link: se for a música certa, clique em "Usar este".', por('sem_resultado'), (it) => (it.candidatos.length ? linhaConferir(it) : linhaSimples(it))),
+    bloco('Ainda não pesquisadas', 'Ainda sem link do YouTube. Clique em "Pesquisar links no YouTube" (cada música gasta 1 das pesquisas do dia). Se a cota acabar, o que já foi achado fica salvo e você continua amanhã.', por('pendente'), (it) => linhaSimples(it)),
     bloco('Já estão na sua biblioteca', 'Não foram pesquisadas e não entram no TXT.', por('na_biblioteca'), (it) => linhaSimples(it), { recolhido: true }),
     bloco('Descartadas por você', 'Não entram no TXT.', por('descartada'), (it) => linhaSimples(it, h('button', { type: 'button', class: 'pequeno', onclick: () => decidir(it.chave, 'limpar') }, 'Desfazer')), { recolhido: true }),
   ].filter(Boolean);
   $('#listas').replaceChildren(...(blocos.length ? blocos : [h('p', { class: 'vazio' }, 'Nada para mostrar ainda.')]));
 }
+
+
+// ---------- busca por estilo e época ----------
+let temaAtual = '';
+let consultaAtual = null;
+
+function periodoSelecionado() {
+  const c = consultaAtual;
+  return c && c.anoDe != null && $('#filtro-ano').checked ? { anoDe: c.anoDe, anoAte: c.anoAte } : {};
+}
+
+function ocupado(texto) {
+  const m = $('#montando');
+  m.hidden = !texto; m.className = 'aviso'; m.textContent = texto || '';
+  for (const b of ['#btn-explorar', '#btn-montar-busca']) $(b).disabled = !!texto;
+  document.querySelectorAll('.cartao button').forEach((b) => { b.disabled = !!texto; });
+}
+
+function cartaoDePlaylist(p) {
+  const img = seguroImagem(p.imagem);
+  return h('div', { class: 'cartao' },
+    img ? h('img', { src: img, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : h('div', { class: 'sem-imagem' }),
+    h('div', {},
+      h('div', { class: 'titulo' }, p.titulo),
+      h('div', { class: 'sec' }, `${p.faixas} músicas${p.criador ? ' · por ' + p.criador : ''}`)),
+    h('div', { class: 'botoes' },
+      h('a', { class: 'botao pequeno', href: seguroDeezer(p.link), target: '_blank', rel: 'noopener noreferrer' }, 'Ver no Deezer'),
+      h('button', { type: 'button', class: 'pequeno', onclick: () => montar('/api/montar-playlist', { id: p.id, titulo: p.titulo, ...periodoSelecionado(), limite: Number($('#limite-lista').value) }) }, 'Usar esta playlist')));
+}
+
+function desenharExploracao(r) {
+  consultaAtual = r.consulta;
+  const c = r.consulta;
+  $('#explorar').hidden = false;
+  $('#explorar-entendi').textContent = (c.resumo ? `Entendi: ${c.resumo}. ` : '') + (r.playlists.length ? 'Escolha uma playlist ou monte uma lista juntando as melhores.' : 'Não achei playlists para isso. Tente outras palavras.');
+  const temAno = c.anoDe != null;
+  $('#filtro-ano-area').hidden = !temAno;
+  if (temAno) $('#filtro-ano-texto').textContent = c.anoDe === c.anoAte ? `Só músicas lançadas em ${c.anoDe}` : `Só músicas lançadas entre ${c.anoDe} e ${c.anoAte}`;
+  $('#btn-montar-busca').hidden = !r.playlists.length;
+  $('#playlists').replaceChildren(...r.playlists.map(cartaoDePlaylist));
+}
+
+async function montar(caminho, corpo) {
+  aviso('');
+  ocupado('Montando a lista... isso consulta o Deezer e pode levar até um minuto na primeira vez.');
+  try {
+    const r = await api(caminho, corpo);
+    ocupado('');
+    const partes = [`Lista montada: ${r.total} música(s).`];
+    if (r.playlistsUsadas) partes.push(`Juntei ${r.playlistsUsadas} playlist(s); músicas que aparecem em várias vêm primeiro.`);
+    if (r.filtrouPorAno && r.foraDoPeriodo) partes.push(`${r.foraDoPeriodo} música(s) foram deixadas de fora por serem de outra época.`);
+    if (r.filtrouPorAno && r.semData) partes.push(`${r.semData} música(s) ficaram de fora porque o Deezer não informa a data do álbum.`);
+    partes.push('Os links do YouTube ainda NÃO foram pesquisados: confira a lista abaixo e clique em "Pesquisar links no YouTube".');
+    aviso(partes.join('\n'), 'ok');
+    await abrirResultado(r.slug, true);
+    carregarEstado().catch(() => {});
+    $('#resultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { ocupado(''); aviso(e.message, 'erro'); }
+}
+
+$('#form-explorar').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  aviso('');
+  temaAtual = $('#tema').value.trim();
+  ocupado('Procurando playlists no Deezer...');
+  try {
+    desenharExploracao(await api('/api/explorar?q=' + encodeURIComponent(temaAtual)));
+    ocupado('');
+  } catch (e) { ocupado(''); aviso(e.message, 'erro'); }
+});
+
+$('#btn-montar-busca').addEventListener('click', () => {
+  const p = periodoSelecionado();
+  montar('/api/montar-busca', { q: temaAtual, limite: Number($('#limite-lista').value), filtrarAno: p.anoDe != null });
+});
+
+$('#btn-continuar').addEventListener('click', async () => {
+  aviso('');
+  try {
+    await api('/api/continuar', { slug: slugAtual, limite: resultadoAtual.limite });
+    mostrarJob({ rodando: true, total: 0, feitas: 0, mensagem: 'Começando...' });
+    acompanhar();
+  } catch (e) { aviso(e.message, 'erro'); }
+});
 
 $('#ordem').addEventListener('change', desenharResultado);
 
