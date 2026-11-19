@@ -13,6 +13,8 @@ const PENALIDADE_LEVE = /\b(lyrics?|letra|legendado|traducao|tradutor|sub espano
 const OFICIAL = /\b(official|oficial)\b/;
 const PARENTESES = /[([][^)\]]*[)\]]/g; // "(La Notte)", "[Remastered]"...
 const AO_VIVO = /\b(ao vivo|live)\b/g;
+// "Linkin Park feat. Jay-Z - Música": o "feat." no meio do título do vídeo não pode cortar o resto do título.
+const semFeat = (texto) => String(texto ?? '').replace(/\s(feat|ft)\.?\s/gi, ' ');
 const PREFIXO_ARTISTA = /^(mc|dj) /; // "MC Ryan SP" aparece nos vídeos só como "Ryan SP"
 
 /**
@@ -29,8 +31,8 @@ export function avaliar(faixa, cand) {
   const aBase = a.replace(PREFIXO_ARTISTA, '').trim();
   const temABase = aBase.length >= 4 && aBase !== a;
   const artistaAparece = (texto) => contem(texto, a) || (temABase && contem(texto, aBase));
-  const v = textoComparavel(cand.titulo);
-  const c = textoComparavel(cand.canal);
+  const v = textoComparavel(semFeat(cand.titulo));
+  const c = textoComparavel(semFeat(cand.canal));
   const motivos = [];
   let pontos = 0;
   let tituloExato = false;
