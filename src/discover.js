@@ -105,11 +105,15 @@ export class Descobridor {
 
     const itens = faixas.map((f) => {
       const p = this.cache.pesquisa(f.chave);
-      const item = { ordem: f.ordem, titulo: f.titulo, album: f.album, chave: f.chave, estado: 'pendente', candidatos: p?.candidatos ?? [] };
+      // Confere de novo, com as regras de hoje, só o que ficou em "conferir" ou "sem resultado".
+      // Usa os vídeos que já estão salvos: não pesquisa no YouTube e não gasta cota. O que já era "encontrada" não muda.
+      const rev = p?.candidatos?.length && p.estado !== 'encontrada' ? escolher({ artista: reg.nome, titulo: f.titulo, duracao: f.duracao }, p.candidatos) : null;
+      const estadoSalvo = rev ? rev.estado : p?.estado;
+      const item = { ordem: f.ordem, titulo: f.titulo, album: f.album, chave: f.chave, estado: 'pendente', candidatos: rev ? rev.candidatos : (p?.candidatos ?? []) };
       if (p?.manual?.acao === 'descartada') item.estado = 'descartada';
       else if (lib && jaTenho(lib, reg.nome, f.titulo)) item.estado = 'na_biblioteca';
       else if (p) {
-        item.estado = p.estado === 'encontrada' || p.estado === 'conferir' || p.estado === 'sem_resultado' ? p.estado : 'pendente';
+        item.estado = estadoSalvo === 'encontrada' || estadoSalvo === 'conferir' || estadoSalvo === 'sem_resultado' ? estadoSalvo : 'pendente';
         if (p.manual?.acao === 'aprovada') {
           const v = item.candidatos.find((c) => c.id === p.manual.videoId);
           if (v) { item.estado = 'encontrada'; item.video = v; item.manual = true; }
